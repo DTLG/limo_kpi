@@ -50,11 +50,11 @@ class _ErrorAnimationState extends State<ErrorAnimation>
 
   @override
   Widget build(BuildContext context) {
-    return Lottie.network(
-      'https://assets8.lottiefiles.com/packages/lf20_qpwbiyxf.json',
+    return Lottie.asset(
+      'assets/lottiefiles/error.json',
       width: widget.width,
       height: widget.height,
-      controller: _controller,
+      // controller: _controller,
       repeat: false,
     );
   }

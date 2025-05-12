@@ -1,13 +1,17 @@
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
+import 'package:provider/provider.dart';
+import '../providers/pie_chart_provider.dart';
+import '../pages/all_failures_page.dart';
 
 class PieChart extends StatefulWidget {
   final List<num> data;
   final List<String> labels;
   final List<Color> colors;
   final bool animated;
-  final List<DateTime> dates;
+  final List<List<DateTime>> dates;
   final Function(String) onCategorySelected;
+  final String categoryType;
 
   const PieChart({
     Key? key,
@@ -16,6 +20,7 @@ class PieChart extends StatefulWidget {
     required this.colors,
     required this.dates,
     required this.onCategorySelected,
+    required this.categoryType,
     this.animated = false,
   }) : super(key: key);
 
@@ -24,40 +29,31 @@ class PieChart extends StatefulWidget {
 }
 
 class _PieChartState extends State<PieChart> {
-  final Map<String, bool> _selectedLabels = {};
-  int? _hoveredIndex;
-  DateTime? _startDate;
-  DateTime? _endDate;
-
   @override
   void initState() {
     super.initState();
-    _initializeLabels();
-    _endDate = DateTime.now();
-    _startDate = _endDate!.subtract(const Duration(days: 30));
-  }
-
-  void _initializeLabels() {
-    _selectedLabels.clear();
-    for (var label in widget.labels) {
-      _selectedLabels[label] = true;
-    }
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      context.read<PieChartProvider>().initializeLabels(widget.labels);
+    });
   }
 
   @override
   void didUpdateWidget(PieChart oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.labels != widget.labels) {
-      _initializeLabels();
+      context.read<PieChartProvider>().initializeLabels(widget.labels);
     }
   }
 
   List<num> get _filteredData {
+    final provider = context.watch<PieChartProvider>();
     final List<num> filteredData = [];
     for (int i = 0; i < widget.data.length; i++) {
-      if (_selectedLabels[widget.labels[i]] == true &&
-          _isDateInRange(widget.dates[i])) {
-        filteredData.add(widget.data[i]);
+      if (provider.selectedLabels[widget.labels[i]] == true) {
+        // Перевіряємо чи є хоча б одна дата в діапазоні для цієї групи
+        final hasDateInRange =
+            widget.dates[i].any((date) => provider.isDateInRange(date));
+        filteredData.add(hasDateInRange ? widget.data[i] : 0);
       } else {
         filteredData.add(0);
       }
@@ -65,155 +61,118 @@ class _PieChartState extends State<PieChart> {
     return filteredData;
   }
 
-  bool _isDateInRange(DateTime date) {
-    if (_startDate == null || _endDate == null) return true;
-    return date.isAfter(_startDate!) &&
-        date.isBefore(_endDate!.add(const Duration(days: 1)));
-  }
-
-  void _showDateRangePicker() async {
-    final DateTimeRange? picked = await showDateRangePicker(
-      context: context,
-      firstDate: DateTime(2020),
-      lastDate: DateTime.now(),
-      initialDateRange: DateTimeRange(
-        start: _startDate!,
-        end: _endDate!,
-      ),
-    );
-
-    if (picked != null) {
-      setState(() {
-        _startDate = picked.start;
-        _endDate = picked.end;
-      });
-    }
-  }
-
-  void _showDetailedData(String category, num value) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: Text(category),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text('Простій: ${value.toStringAsFixed(2)}'),
-            Text(
-                'Обрана дата з/до: ${_startDate?.toString().split(' ')[0].substring(5)} : ${_endDate?.toString().split(' ')[0].substring(5)}'),
-            const SizedBox(height: 16),
-            Text(
-                'Частка від загального простою: ${(value / _filteredData.reduce((a, b) => a + b) * 100).toStringAsFixed(1)}%'),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Ок'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDateRangeSelector() {
-    return Padding(
-      padding: const EdgeInsets.all(8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          TextButton.icon(
-            onPressed: _showDateRangePicker,
-            icon: const Icon(Icons.date_range),
-            label: Text(
-              '${_startDate?.toString().split(' ')[0]} - ${_endDate?.toString().split(' ')[0]}',
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegend(double heightCoefficient) {
-    return SizedBox(
-      height: MediaQuery.of(context).size.height * heightCoefficient,
-      child: ListView.builder(
-        shrinkWrap: true,
-        itemCount: widget.labels.length,
-        itemBuilder: (context, index) {
-          final total = _filteredData.reduce((a, b) => a + b);
-          final percentage = total > 0
-              ? (_filteredData[index] / total * 100).toStringAsFixed(1)
-              : '0.0';
-          final minutes = _filteredData[index].toStringAsFixed(1);
-
-          return InkWell(
-            onTap: () {
-              setState(() {
-                _hoveredIndex = _hoveredIndex == index ? null : index;
-              });
-              widget.onCategorySelected(widget.labels[index]);
-            },
-            onLongPress: () {
-              if (_filteredData[index] > 0) {
-                _showDetailedData(widget.labels[index], _filteredData[index]);
-              }
-            },
-            child: Card(
-              margin: const EdgeInsets.all(8),
-              color:
-                  _hoveredIndex == index ? widget.colors[index] : Colors.white,
-              // padding: const EdgeInsets.all(8),
-
-              // decoration: BoxDecoration(
-              //   color: _hoveredIndex == index
-              //       ? widget.colors[index].withOpacity(0.2)
-              //       : Colors.transparent,
-              //   border: Border(
-              //     bottom: BorderSide(
-              //       color: Colors.grey.withOpacity(0.2),
-              //       width: 1,
-              //     ),
-              //   ),
-              // ),
-              child: Row(
-                children: [
-                  Checkbox(
-                    value: _selectedLabels[widget.labels[index]] ?? true,
-                    onChanged: (bool? value) {
-                      setState(() {
-                        _selectedLabels[widget.labels[index]] = value ?? true;
-                      });
-                    },
-                    activeColor: widget.colors[index],
+  Widget _buildLegend() {
+    final provider = context.watch<PieChartProvider>();
+    return CustomScrollView(
+      physics: const ClampingScrollPhysics(),
+      slivers: [
+        SliverToBoxAdapter(
+          child: Padding(
+            padding:
+                const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton.icon(
+                  onPressed: () {
+                    final allSelected =
+                        provider.selectedLabels.values.every((value) => value);
+                    provider.toggleAllLabels(!allSelected);
+                  },
+                  icon: Icon(
+                    provider.selectedLabels.values.every((value) => value)
+                        ? Icons.check_box
+                        : Icons.check_box_outline_blank,
+                    color: Colors.blue,
                   ),
-                  Container(
-                    width: 12,
-                    height: 12,
-                    color: widget.colors[index],
-                  ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      '${widget.labels[index]} | \t$percentage% | \t$minutes хв',
-                      style: const TextStyle(fontSize: 14),
+                  label: Text(
+                    provider.selectedLabels.values.every((value) => value)
+                        ? 'Сховати всі'
+                        : 'Вибрати всі',
+                    style: const TextStyle(
+                      color: Colors.blue,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          );
-        },
-      ),
+          ),
+        ),
+        SliverList(
+          delegate: SliverChildBuilderDelegate(
+            (context, index) {
+              final total = _filteredData.reduce((a, b) => a + b);
+              final percentage = total > 0
+                  ? (_filteredData[index] / total * 100).toStringAsFixed(1)
+                  : '0.0';
+              final minutes = _filteredData[index].toStringAsFixed(1);
+
+              return InkWell(
+                onTap: () {
+                  provider.setHoveredIndex(
+                    provider.hoveredIndex == index ? null : index,
+                  );
+                  widget.onCategorySelected(widget.labels[index]);
+                },
+                onLongPress: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => AllFailuresPage(
+                        category: widget.labels[index],
+                        categoryType: widget.categoryType,
+                        startDate: provider.startDate,
+                        endDate: provider.endDate,
+                      ),
+                    ),
+                  );
+                },
+                child: Card(
+                  margin: const EdgeInsets.all(8),
+                  color: provider.hoveredIndex == index
+                      ? widget.colors[index]
+                      : Colors.white,
+                  child: Row(
+                    children: [
+                      Checkbox(
+                        value: provider.selectedLabels[widget.labels[index]] ??
+                            true,
+                        onChanged: (bool? value) {
+                          provider.toggleLabel(widget.labels[index], value);
+                        },
+                        activeColor: widget.colors[index],
+                      ),
+                      Container(
+                        width: 12,
+                        height: 12,
+                        color: widget.colors[index],
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          '${widget.labels[index]} | \t$percentage% | \t$minutes хв',
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+            childCount: widget.labels.length,
+          ),
+        ),
+      ],
     );
   }
 
   Widget _buildChart() {
+    final provider = context.watch<PieChartProvider>();
     final total = _filteredData.fold<num>(0, (a, b) => a + b);
     return Card(
       margin: const EdgeInsets.all(16),
-      color: Colors.white, // темний фон
+      color: Colors.white,
       child: Center(
         child: Stack(
           alignment: Alignment.center,
@@ -223,12 +182,12 @@ class _PieChartState extends State<PieChart> {
               child: Padding(
                 padding: const EdgeInsets.all(8.0),
                 child: CustomPaint(
-                  size: Size.square(220),
+                  size: const Size.square(220),
                   painter: PieChartPainter(
                     data: _filteredData,
                     colors: widget.colors,
-                    hoveredIndex: _hoveredIndex,
-                    gap: 8, // градусів між секторами
+                    hoveredIndex: provider.hoveredIndex,
+                    gap: 8,
                   ),
                 ),
               ),
@@ -268,15 +227,13 @@ class _PieChartState extends State<PieChart> {
         if (orientation == Orientation.portrait) {
           return Column(
             children: [
-              // _buildDateRangeSelector(),
               Expanded(
                 child: _buildChart(),
               ),
               const SizedBox(height: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: _buildLegend(0.4),
-                ),
+              SizedBox(
+                height: MediaQuery.of(context).size.height * 0.4,
+                child: _buildLegend(),
               ),
             ],
           );
@@ -286,16 +243,14 @@ class _PieChartState extends State<PieChart> {
               Expanded(
                 child: Column(
                   children: [
-                    // _buildDateRangeSelector(),
                     Expanded(child: _buildChart()),
                   ],
                 ),
               ),
               const SizedBox(width: 16),
-              Expanded(
-                child: SingleChildScrollView(
-                  child: _buildLegend(0.7),
-                ),
+              SizedBox(
+                width: MediaQuery.of(context).size.width * 0.3,
+                child: _buildLegend(),
               ),
             ],
           );
@@ -315,7 +270,7 @@ class PieChartPainter extends CustomPainter {
     required this.data,
     required this.colors,
     this.hoveredIndex,
-    this.gap = 6, // градусів між секторами
+    this.gap = 20, // градусів між секторами
   });
 
   @override
@@ -325,9 +280,10 @@ class PieChartPainter extends CustomPainter {
     final total = data.fold<num>(0, (a, b) => a + b);
     if (total == 0) return;
 
-    final thickness = radius * 0.25; // товщина кільця
+    final thickness = radius * 0.15; // зменшена товщина кільця
     double startAngle = -math.pi / 2;
     final gapRadians = gap * math.pi / 180;
+    final spacing = radius * 0.02; // відступ між лініями
 
     for (int i = 0; i < data.length; i++) {
       if (data[i] == 0) continue;
@@ -351,7 +307,8 @@ class PieChartPainter extends CustomPainter {
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 8);
 
         canvas.drawArc(
-          Rect.fromCircle(center: center, radius: radius - thickness / 2),
+          Rect.fromCircle(
+              center: center, radius: radius - thickness / 2 + spacing),
           startAngle + gapRadians / 2,
           sweepAngle > 0 ? sweepAngle : 0,
           false,
@@ -360,7 +317,8 @@ class PieChartPainter extends CustomPainter {
       }
 
       canvas.drawArc(
-        Rect.fromCircle(center: center, radius: radius - thickness / 2),
+        Rect.fromCircle(
+            center: center, radius: radius - thickness / 2 + spacing),
         startAngle + gapRadians / 2,
         sweepAngle > 0 ? sweepAngle : 0,
         false,

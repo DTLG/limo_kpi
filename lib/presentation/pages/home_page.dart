@@ -128,7 +128,8 @@ class HomePage extends StatelessWidget {
                           Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const AllFailuresPage(),
+                              builder: (context) =>
+                                  AllFailuresPage.allFailures(),
                             ),
                           );
                         },
@@ -273,7 +274,8 @@ class HomePage extends StatelessWidget {
                               Navigator.push(
                                 context,
                                 MaterialPageRoute(
-                                  builder: (context) => const AllFailuresPage(),
+                                  builder: (context) =>
+                                      AllFailuresPage.allFailures(),
                                 ),
                               );
                             },

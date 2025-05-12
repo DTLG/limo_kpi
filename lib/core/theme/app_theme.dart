@@ -5,7 +5,7 @@ class AppTheme {
   static ThemeData get lightTheme {
     return ThemeData(
       useMaterial3: true,
-      colorScheme: ColorScheme.light(
+      colorScheme: const ColorScheme.light(
         primary: AppColors.primary,
         secondary: AppColors.secondary,
         error: AppColors.error,
@@ -37,7 +37,7 @@ class AppTheme {
         ),
       ),
       dropdownMenuTheme: DropdownMenuThemeData(
-        textStyle: TextStyle(
+        textStyle: const TextStyle(
           color: AppColors.textPrimary,
           fontSize: 16,
         ),

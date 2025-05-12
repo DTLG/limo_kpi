@@ -7,7 +7,7 @@ class FailureRecord {
   final String failName;
   final int line;
   final double minutes;
-
+  final String lineName;
   const FailureRecord({
     required this.id,
     required this.comment,
@@ -17,5 +17,6 @@ class FailureRecord {
     required this.failName,
     required this.line,
     required this.minutes,
+    required this.lineName,
   });
 }

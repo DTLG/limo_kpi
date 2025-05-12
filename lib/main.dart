@@ -4,6 +4,7 @@ import 'package:http/http.dart' as http;
 import 'data/datasources/failure_remote_data_source.dart';
 import 'data/repositories/failure_repository_impl.dart';
 import 'presentation/providers/failure_provider.dart';
+import 'presentation/providers/pie_chart_provider.dart';
 import 'presentation/pages/home_page.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';
@@ -17,15 +18,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ChangeNotifierProvider(
-      create: (_) {
-        final client = http.Client();
-        final remoteDataSource = FailureRemoteDataSourceImpl(client: client);
-        final repository =
-            FailureRepositoryImpl(remoteDataSource: remoteDataSource);
-        return FailureProvider(repository: repository);
-      },
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider(
+          create: (_) {
+            final client = http.Client();
+            final remoteDataSource =
+                FailureRemoteDataSourceImpl(client: client);
+            final repository =
+                FailureRepositoryImpl(remoteDataSource: remoteDataSource);
+            return FailureProvider(repository: repository);
+          },
+        ),
+        ChangeNotifierProvider(create: (_) => PieChartProvider()),
+      ],
       child: MaterialApp(
+        title: 'Limo-KPI',
         theme: AppTheme.lightTheme,
         locale: const Locale('uk', 'UA'),
         supportedLocales: const [

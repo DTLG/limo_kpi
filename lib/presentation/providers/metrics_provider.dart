@@ -21,9 +21,6 @@ class MetricsProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Add minimum 2 second delay
-      await Future.delayed(const Duration(seconds: 3));
-
       _metrics = await repository.getMetrics();
       _error = '';
     } catch (e) {

@@ -3,10 +3,10 @@ import 'package:provider/provider.dart';
 import 'package:lottie/lottie.dart';
 import '../../domain/entities/failure_record.dart';
 import '../providers/failure_provider.dart';
-import '../widgets/bar_chart.dart';
 import '../widgets/pie_chart.dart';
 import '../../core/theme/app_colors.dart';
 import '../widgets/error_animation.dart';
+import '../providers/pie_chart_provider.dart';
 
 class FailureChartPage extends StatefulWidget {
   const FailureChartPage({Key? key}) : super(key: key);
@@ -31,14 +31,32 @@ class _FailureChartPageState extends State<FailureChartPage> {
 
   bool _isDateInRange(DateTime date) {
     if (_startDate == null || _endDate == null) return true;
-    return date.isAfter(_startDate!) &&
-        date.isBefore(_endDate!.add(const Duration(days: 1)));
+    final startOfDay =
+        DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+    final endOfDay =
+        DateTime(_endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
+    return date.isAfter(startOfDay) && // ← Без віднімання дня
+        date.isBefore(endOfDay);
+
+    // if (_startDate == null || _endDate == null) return true;
+    // return date.isAfter(_startDate!) &&
+    //     date.isBefore(_endDate!.add(const Duration(days: 1)));
   }
 
   List<FailureRecord> _filterFailuresByDate(List<FailureRecord> failures) {
     return failures
         .where((failure) => _isDateInRange(failure.dtStart))
         .toList();
+  }
+
+  void _updateDateRange(DateTime? start, DateTime? end) {
+    setState(() {
+      _startDate = start;
+      _endDate = end;
+    });
+    Future.microtask(() {
+      context.read<PieChartProvider>().setDateRange(start, end);
+    });
   }
 
   @override
@@ -119,7 +137,16 @@ class _FailureChartPageState extends State<FailureChartPage> {
                     0, (sum, failure) => sum + failure.minutes);
               }).toList();
 
-              List<String> pieLabels = groupedData.keys.toList();
+              // Формуємо pieLabels: якщо selectedCategory == 'line', то беремо lineName з першого FailureRecord у групі
+              List<String> pieLabels;
+              if (selectedCategory == 'line') {
+                pieLabels = groupedData.values
+                    .map((failures) =>
+                        failures.isNotEmpty ? failures.last.lineName : '')
+                    .toList();
+              } else {
+                pieLabels = groupedData.keys.toList();
+              }
 
               // Get dates for each group
               final pieDates = groupedData.values.map((failures) {
@@ -128,63 +155,47 @@ class _FailureChartPageState extends State<FailureChartPage> {
 
               return Column(
                 children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  SafeArea(
+                    child: Column(
                       children: [
-                        DropdownButton<String>(
-                          value: selectedCategory,
-                          items: const [
-                            DropdownMenuItem(
-                              value: 'dep_name',
-                              child: Text('За відділенням'),
-                            ),
-                            DropdownMenuItem(
-                              value: 'line',
-                              child: Text('За лінією'),
-                            ),
-                            // DropdownMenuItem(
-                            //   value: 'fail_name',
-                            //   child: Text('За типом простою'),
-                            // ),
-                          ],
-                          onChanged: (value) {
-                            if (value != null) {
-                              setState(() {
-                                selectedCategory = value;
-                                selectedValue = null;
-                                pieLabels = groupedData.keys.toList();
-                              });
-                            }
-                          },
-                        ),
-                        TextButton.icon(
-                          onPressed: () async {
-                            final DateTimeRange? picked =
-                                await showDateRangePicker(
-                              context: context,
-                              firstDate: DateTime(2020),
-                              lastDate: DateTime.now(),
-                              initialDateRange: DateTimeRange(
-                                start: _startDate ??
-                                    DateTime.now()
-                                        .subtract(const Duration(days: 30)),
-                                end: _endDate ?? DateTime.now(),
+                        Container(
+                          margin: const EdgeInsets.symmetric(
+                              horizontal: 16.0, vertical: 8.0),
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(18),
+                            border: Border.all(color: Colors.grey[400]!),
+                          ),
+                          child: DropdownButton<String>(
+                            value: selectedCategory,
+                            isExpanded: true,
+                            underline: Container(),
+                            icon: Icon(Icons.arrow_drop_down,
+                                color: Colors.grey[700]),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'dep_name',
+                                child: Text('За відділенням'),
                               ),
-                            );
-                            if (picked != null) {
-                              setState(() {
-                                _startDate = picked.start;
-                                _endDate = picked.end;
-                              });
-                            }
-                          },
-                          icon: const Icon(Icons.date_range),
-                          label: Text(
-                            '${_startDate?.toString().split(' ')[0].substring(5)} - ${_endDate?.toString().split(' ')[0].substring(5)}',
+                              DropdownMenuItem(
+                                value: 'line',
+                                child: Text('За лінією'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              if (value != null) {
+                                setState(() {
+                                  selectedCategory = value;
+                                  selectedValue = null;
+                                  pieLabels = groupedData.keys.toList();
+                                });
+                              }
+                            },
                           ),
                         ),
+                        _buildDateFilterButtons(),
                       ],
                     ),
                   ),
@@ -193,12 +204,13 @@ class _FailureChartPageState extends State<FailureChartPage> {
                       data: pieData,
                       labels: pieLabels,
                       colors: AppColors.chartColors,
-                      dates: pieDates.expand((dates) => dates).toList(),
+                      dates: pieDates,
                       onCategorySelected: (category) {
                         setState(() {
                           selectedValue = category;
                         });
                       },
+                      categoryType: selectedCategory,
                       animated: true,
                     ),
                   ),
@@ -211,41 +223,120 @@ class _FailureChartPageState extends State<FailureChartPage> {
     );
   }
 
-  Widget _buildDetailsView(List<FailureRecord> failures, String category) {
-    return Card(
-      margin: const EdgeInsets.all(16),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'Details for $category',
-              style: const TextStyle(
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
+  Widget _buildDateFilterButtons() {
+    final today = DateTime.now();
+    final isToday = _startDate != null &&
+        _endDate != null &&
+        _startDate!.year == today.year &&
+        _startDate!.month == today.month &&
+        _startDate!.day == today.day &&
+        _endDate!.year == today.year &&
+        _endDate!.month == today.month &&
+        _endDate!.day == today.day;
+
+    final last7Start = today.subtract(const Duration(days: 6));
+    final isLast7 = _startDate != null &&
+        _endDate != null &&
+        _startDate!.year == last7Start.year &&
+        _startDate!.month == last7Start.month &&
+        _startDate!.day == last7Start.day &&
+        _endDate!.year == today.year &&
+        _endDate!.month == today.month &&
+        _endDate!.day == today.day;
+
+    final last30Start = today.subtract(const Duration(days: 29));
+    final isLast30 = _startDate != null &&
+        _endDate != null &&
+        _startDate!.year == last30Start.year &&
+        _startDate!.month == last30Start.month &&
+        _startDate!.day == last30Start.day &&
+        _endDate!.year == today.year &&
+        _endDate!.month == today.month &&
+        _endDate!.day == today.day;
+
+    final isCustom = !isToday && !isLast7 && !isLast30;
+
+    String customLabel;
+    if (_startDate != null && _endDate != null) {
+      customLabel =
+          "${_startDate!.day.toString().padLeft(2, '0')}.${_startDate!.month.toString().padLeft(2, '0')} - ${_endDate!.day.toString().padLeft(2, '0')}.${_endDate!.month.toString().padLeft(2, '0')}";
+    } else {
+      customLabel = "Custom Range";
+    }
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 12.0, horizontal: 16.0),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          _buildFilterButton(
+            label: 'Сьогодні',
+            selected: isToday,
+            onTap: () {
+              _updateDateRange(
+                DateTime(today.year, today.month, today.day),
+                DateTime(today.year, today.month, today.day),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+          _buildFilterButton(
+            label: 'Останні 7 днів',
+            selected: isLast7,
+            onTap: () {
+              _updateDateRange(
+                DateTime(last7Start.year, last7Start.month, last7Start.day),
+                DateTime(today.year, today.month, today.day),
+              );
+            },
+          ),
+          const SizedBox(width: 4),
+          _buildFilterButton(
+            label: isCustom ? customLabel : 'Обрати період',
+            selected: isLast30 || isCustom,
+            onTap: () async {
+              final picked = await showDateRangePicker(
+                context: context,
+                firstDate: DateTime(2020),
+                lastDate: today,
+                initialDateRange: DateTimeRange(
+                  start: _startDate ?? last30Start,
+                  end: _endDate ?? today,
+                ),
+              );
+              if (picked != null) {
+                _updateDateRange(picked.start, picked.end);
+              }
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildFilterButton({
+    required String label,
+    required bool selected,
+    required VoidCallback onTap,
+  }) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          height: 36,
+          decoration: BoxDecoration(
+            color: selected ? Colors.grey[300] : Colors.white,
+            borderRadius: BorderRadius.circular(18),
+            border: Border.all(color: Colors.grey[400]!),
+          ),
+          alignment: Alignment.center,
+          child: Text(
+            label,
+            style: TextStyle(
+              color: selected ? Colors.black : Colors.grey[700],
+              fontWeight: FontWeight.w600,
             ),
-            const SizedBox(height: 16),
-            Expanded(
-              child: ListView.builder(
-                itemCount: failures.length,
-                itemBuilder: (context, index) {
-                  final failure = failures[index];
-                  return ListTile(
-                    title: Text(failure.failName),
-                    subtitle: Text(
-                      'Line ${failure.line} - ${failure.depName}\n'
-                      'Duration: ${failure.minutes.toStringAsFixed(1)} minutes',
-                    ),
-                    trailing: Text(
-                      '${failure.dtStart.hour}:${failure.dtStart.minute.toString().padLeft(2, '0')}',
-                    ),
-                  );
-                },
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );

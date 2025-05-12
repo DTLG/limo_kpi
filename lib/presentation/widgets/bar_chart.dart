@@ -38,13 +38,13 @@ class BarChart extends StatelessWidget {
                     decoration: BoxDecoration(
                       color: color,
                       borderRadius:
-                          BorderRadius.vertical(top: Radius.circular(4)),
+                          const BorderRadius.vertical(top: Radius.circular(4)),
                     ),
                   ),
-                  SizedBox(height: 4),
+                  const SizedBox(height: 4),
                   Text(
                     labels[index],
-                    style: TextStyle(fontSize: 12),
+                    style: const TextStyle(fontSize: 12),
                   ),
                 ],
               );

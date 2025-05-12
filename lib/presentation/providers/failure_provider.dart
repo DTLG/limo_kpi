@@ -21,9 +21,6 @@ class FailureProvider with ChangeNotifier {
       _isLoading = true;
       notifyListeners();
 
-      // Add minimum 2 second delay
-      await Future.delayed(const Duration(seconds: 3));
-
       _failures = await repository.getFailures();
       _error = '';
     } catch (e) {

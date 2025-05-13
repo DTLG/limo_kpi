@@ -81,6 +81,7 @@ class DeformatProvider extends ChangeNotifier {
           iceMass: existing.iceMass + record.iceMass,
           iceName: existing.iceName,
           lineName: existing.lineName,
+          defPercent: existing.defPercent + record.defPercent,
         );
       } else {
         grouped[record.iceLine] = record;

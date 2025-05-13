@@ -116,17 +116,26 @@ class _PieChartState extends State<PieChart> {
                   widget.onCategorySelected(widget.labels[index]);
                 },
                 onLongPress: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => AllFailuresPage(
-                        category: widget.labels[index],
-                        categoryType: widget.categoryType,
-                        startDate: provider.startDate,
-                        endDate: provider.endDate,
+                  if (double.parse(minutes) > 0) {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => AllFailuresPage(
+                          category: widget.labels[index],
+                          categoryType: widget.categoryType,
+                          startDate: provider.startDate,
+                          endDate: provider.endDate,
+                        ),
                       ),
-                    ),
-                  );
+                    );
+                  } else {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Дані відсутні'),
+                        duration: Duration(seconds: 2),
+                      ),
+                    );
+                  }
                 },
                 child: Card(
                   margin: const EdgeInsets.all(8),

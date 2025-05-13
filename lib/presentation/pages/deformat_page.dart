@@ -15,6 +15,7 @@ class DeformatPage extends StatefulWidget {
 
 class _DeformatPageState extends State<DeformatPage> {
   int rotationTurns = 1;
+  String? selectedLine;
 
   @override
   void initState() {
@@ -216,7 +217,7 @@ class _DeformatPageState extends State<DeformatPage> {
           horizontalInterval: 10000,
           getDrawingHorizontalLine: (value) {
             return FlLine(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withAlpha(51),
               strokeWidth: 1,
             );
           },
@@ -230,22 +231,24 @@ class _DeformatPageState extends State<DeformatPage> {
       List<MapEntry<int, DeformatRecord>> sortedEntries) {
     return BarTouchData(
       touchTooltipData: BarTouchTooltipData(
-        direction: TooltipDirection.auto,
-        fitInsideHorizontally: true,
-        fitInsideVertically: true,
-        tooltipPadding: const EdgeInsets.all(18),
-        // tooltipRoundedRadius: 8,
-        // tooltipBgColor: Colors.black87,
+        direction: TooltipDirection.bottom,
+        // fitInsideVertically: true,
+        // fitInsideHorizontally: true,
+        tooltipMargin: -60,
+        tooltipHorizontalAlignment: FLHorizontalAlignment.center,
+        tooltipHorizontalOffset: 2,
+        maxContentWidth: 300,
+
+        getTooltipColor: (group) => Colors.transparent,
         getTooltipItem: (group, groupIndex, rod, rodIndex) {
           final deformat = sortedEntries[groupIndex].value;
           return BarTooltipItem(
-            // '${deformat.iceName}\n'
-            'Маса: ${deformat.defMass.toStringAsFixed(1)} кг\n'
-            'Ice-Маса: ${deformat.iceMass.toStringAsFixed(1)} кг\n'
-            'Лінія: ${deformat.lineName}',
+            deformat.lineName,
+            textAlign: TextAlign.start,
             const TextStyle(
-              color: Colors.white,
+              color: Colors.black,
               fontSize: 12,
+              fontWeight: FontWeight.bold,
             ),
           );
         },
@@ -327,20 +330,25 @@ class _DeformatPageState extends State<DeformatPage> {
           (entry) => BarChartGroupData(
             barsSpace: -20,
             x: entry.key,
+            showingTooltipIndicators: [0],
             barRods: [
               BarChartRodData(
                 fromY: 0,
-                toY: entry.value.value.iceMass,
-                color: Colors.blue[300],
+                toY: entry.value.value.iceMass - entry.value.value.defMass,
+                color: entry.value.value.lineName == selectedLine
+                    ? Colors.blue[700]
+                    : Colors.blue[300],
                 width: 20,
                 borderRadius: const BorderRadius.vertical(
                   bottom: Radius.circular(6),
                 ),
               ),
               BarChartRodData(
-                fromY: entry.value.value.iceMass,
-                toY: entry.value.value.iceMass + entry.value.value.defMass,
-                color: AppColors.primaryButtonColor,
+                fromY: entry.value.value.iceMass - entry.value.value.defMass,
+                toY: entry.value.value.iceMass,
+                color: entry.value.value.lineName == selectedLine
+                    ? AppColors.primaryButtonColor.withAlpha(200)
+                    : AppColors.primaryButtonColor,
                 width: 20,
                 borderRadius: const BorderRadius.vertical(
                   top: Radius.circular(6),
@@ -358,29 +366,48 @@ class _DeformatPageState extends State<DeformatPage> {
       itemCount: sortedEntries.length,
       itemBuilder: (context, index) {
         final deformat = sortedEntries[index].value;
+        final isSelected = deformat.lineName == selectedLine;
+
         return Card(
           margin: const EdgeInsets.symmetric(vertical: 4),
-          surfaceTintColor: Colors.blueAccent,
+          surfaceTintColor: isSelected ? Colors.blueAccent : null,
           child: ListTile(
+            onTap: () {
+              setState(() {
+                selectedLine = isSelected ? null : deformat.lineName;
+              });
+            },
             title: Text(
-              'Лінія ${deformat.iceLine}: ${deformat.iceName}',
-              style: const TextStyle(fontWeight: FontWeight.bold),
+              'Лінія: ${deformat.lineName}',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+                color: isSelected ? AppColors.primaryButtonColor : null,
+              ),
             ),
-            subtitle: Text('Лінія: ${deformat.lineName}'),
+            subtitle: Text(
+              'Лінія ${deformat.iceLine}',
+            ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(
                   'Деформат: ${deformat.defMass.toStringAsFixed(1)} кг',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.bold,
-                    color: AppColors.primaryButtonColor,
+                    color: isSelected ? AppColors.primaryButtonColor : null,
                   ),
                 ),
                 Text(
-                  'Ice: ${deformat.iceMass.toStringAsFixed(1)} кг',
+                  'Загальна маса: ${deformat.iceMass.toStringAsFixed(1)} кг',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+                Text(
+                  'Відсоток: ${((deformat.defMass / deformat.iceMass) * 100).toStringAsFixed(1)} %',
                   style: const TextStyle(
                     fontSize: 12,
                     color: Colors.grey,

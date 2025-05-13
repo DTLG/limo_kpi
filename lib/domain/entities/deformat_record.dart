@@ -5,6 +5,7 @@ class DeformatRecord {
   final double iceMass;
   final String iceName;
   final String lineName;
+  final double defPercent;
 
   DeformatRecord({
     required this.date,
@@ -13,12 +14,14 @@ class DeformatRecord {
     required this.iceMass,
     required this.iceName,
     required this.lineName,
+    required this.defPercent,
   });
 
   factory DeformatRecord.fromJson(Map<String, dynamic> json, DateTime date) {
     return DeformatRecord(
       date: date,
       defMass: json['def_mass'].toDouble(),
+      defPercent: json['def_percent'].toDouble(),
       iceLine: json['ice_line'],
       iceMass: json['ice_mass'].toDouble(),
       iceName: json['ice_name'],

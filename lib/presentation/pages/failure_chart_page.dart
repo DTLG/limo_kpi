@@ -177,11 +177,11 @@ class _FailureChartPageState extends State<FailureChartPage> {
                             items: const [
                               DropdownMenuItem(
                                 value: 'dep_name',
-                                child: Text('За відділенням'),
+                                child: Text('По відділенням'),
                               ),
                               DropdownMenuItem(
                                 value: 'line',
-                                child: Text('За лінією'),
+                                child: Text('По лініям'),
                               ),
                             ],
                             onChanged: (value) {

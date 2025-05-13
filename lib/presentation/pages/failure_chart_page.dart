@@ -281,7 +281,7 @@ class _FailureChartPageState extends State<FailureChartPage> {
           ),
           const SizedBox(width: 4),
           _buildFilterButton(
-            label: 'Останні 7 днів',
+            label: 'Тиждень',
             selected: isLast7,
             onTap: () {
               _updateDateRange(

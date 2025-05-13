@@ -76,7 +76,8 @@ class _AllFailuresPageState extends State<AllFailuresPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Простої: ${widget.category}'),
+        title: Text(
+            'Простої: ${widget.category == 'all' ? "Всі" : widget.category}'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -145,7 +146,7 @@ class _AllFailuresPageState extends State<AllFailuresPage> {
                       if (failure.comment.isNotEmpty) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'Коментар: ${failure.comment}',
+                          'Коментар: ${failure.comment == 'None' ? "Відсутній" : failure.comment}',
                           style: const TextStyle(fontStyle: FontStyle.italic),
                         ),
                       ],

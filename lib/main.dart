@@ -8,6 +8,7 @@ import 'presentation/providers/pie_chart_provider.dart';
 import 'presentation/pages/home_page.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'core/theme/app_theme.dart';
+import 'presentation/providers/deformat_provider.dart';
 
 void main() {
   runApp(const MyApp());
@@ -31,6 +32,7 @@ class MyApp extends StatelessWidget {
           },
         ),
         ChangeNotifierProvider(create: (_) => PieChartProvider()),
+        ChangeNotifierProvider(create: (_) => DeformatProvider()),
       ],
       child: MaterialApp(
         title: 'Limo-KPI',

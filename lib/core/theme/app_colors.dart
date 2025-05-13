@@ -47,4 +47,7 @@ class AppColors {
     Color(0xFFFB8C00), // Яскраво-жовтогарячий
     Color(0xFF8E24AA), // Електричний фіолетовий
   ];
+
+  static const Color primaryButtonColor = Color(0xFF1B4B8F);
+  static const Color primaryButtonTextColor = Colors.white;
 }

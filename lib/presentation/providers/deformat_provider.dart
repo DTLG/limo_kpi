@@ -53,7 +53,7 @@ class DeformatProvider extends ChangeNotifier {
       case 'custom':
         if (_startDate == null || _endDate == null) return _deformats;
         startOfRange =
-            DateTime(_startDate!.year, _startDate!.month, _startDate!.day);
+            DateTime(_startDate!.year, _startDate!.month, _startDate!.day - 1);
         endOfRange = DateTime(
             _endDate!.year, _endDate!.month, _endDate!.day, 23, 59, 59);
         break;

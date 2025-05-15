@@ -5,6 +5,9 @@ import '../providers/deformat_provider.dart';
 import '../../core/theme/app_colors.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../domain/entities/deformat_record.dart';
+import 'package:logger/logger.dart';
+
+final logger = Logger();
 
 class DeformatPage extends StatefulWidget {
   const DeformatPage({super.key});
@@ -16,6 +19,7 @@ class DeformatPage extends StatefulWidget {
 class _DeformatPageState extends State<DeformatPage> {
   int rotationTurns = 1;
   String? selectedLine;
+  final ScrollController _scrollController = ScrollController();
 
   @override
   void initState() {
@@ -23,6 +27,12 @@ class _DeformatPageState extends State<DeformatPage> {
     Future.microtask(
       () => context.read<DeformatProvider>().fetchDeformats(),
     );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
   }
 
   Widget _buildAppBar() {
@@ -200,29 +210,31 @@ class _DeformatPageState extends State<DeformatPage> {
       );
     }
 
-    return BarChart(
-      BarChartData(
-        alignment: BarChartAlignment.spaceAround,
-        rotationQuarterTurns: rotationTurns,
-        maxY: sortedEntries
-                .map((e) => e.value.iceMass + e.value.defMass)
-                .reduce((a, b) => a > b ? a : b) *
-            1.2,
-        barTouchData: _buildBarTouchData(sortedEntries),
-        titlesData: _buildTitlesData(sortedEntries),
-        borderData: FlBorderData(show: false),
-        gridData: FlGridData(
-          show: true,
-          drawVerticalLine: false,
-          horizontalInterval: 10000,
-          getDrawingHorizontalLine: (value) {
-            return FlLine(
-              color: Colors.grey.withAlpha(51),
-              strokeWidth: 1,
-            );
-          },
+    return GestureDetector(
+      child: BarChart(
+        BarChartData(
+          alignment: BarChartAlignment.spaceAround,
+          rotationQuarterTurns: rotationTurns,
+          maxY: sortedEntries
+                  .map((e) => e.value.iceMass + e.value.defMass)
+                  .reduce((a, b) => a > b ? a : b) *
+              1.2,
+          barTouchData: _buildBarTouchData(sortedEntries),
+          titlesData: _buildTitlesData(sortedEntries),
+          borderData: FlBorderData(show: false),
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: false,
+            horizontalInterval: 10000,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.grey.withAlpha(51),
+                strokeWidth: 1,
+              );
+            },
+          ),
+          barGroups: _buildBarGroups(sortedEntries),
         ),
-        barGroups: _buildBarGroups(sortedEntries),
       ),
     );
   }
@@ -230,15 +242,41 @@ class _DeformatPageState extends State<DeformatPage> {
   BarTouchData _buildBarTouchData(
       List<MapEntry<int, DeformatRecord>> sortedEntries) {
     return BarTouchData(
+      touchCallback: (FlTouchEvent event, BarTouchResponse? response) {
+        if (event is FlTapUpEvent && response?.spot != null) {
+          final index = response!.spot!.touchedBarGroupIndex.toInt();
+          final lineName = sortedEntries[index].value.lineName;
+
+          // Логування події
+          logger.i('Tapped on bar index: $index, lineName: $lineName');
+          setState(() {
+            selectedLine = lineName;
+          });
+
+          // Scroll to the selected item after the build
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            _scrollController.animateTo(
+              index * 80.0, // Approximate height of each item
+              duration: const Duration(milliseconds: 300),
+              curve: Curves.easeInOut,
+            );
+          });
+
+          // showDialog(
+          //   context: context,
+          //   builder: (context) => AlertDialog(
+          //     title: Text(lineName),
+          //     content: Text(lineName),
+          //   ),
+          // );
+        }
+      },
       touchTooltipData: BarTouchTooltipData(
         direction: TooltipDirection.bottom,
-        // fitInsideVertically: true,
-        // fitInsideHorizontally: true,
         tooltipMargin: -60,
         tooltipHorizontalAlignment: FLHorizontalAlignment.center,
         tooltipHorizontalOffset: 2,
         maxContentWidth: 300,
-
         getTooltipColor: (group) => Colors.transparent,
         getTooltipItem: (group, groupIndex, rod, rodIndex) {
           final deformat = sortedEntries[groupIndex].value;
@@ -363,15 +401,18 @@ class _DeformatPageState extends State<DeformatPage> {
   Widget _buildDeformatsList(
       List<MapEntry<int, DeformatRecord>> sortedEntries) {
     return ListView.builder(
+      controller: _scrollController,
       itemCount: sortedEntries.length,
       itemBuilder: (context, index) {
         final deformat = sortedEntries[index].value;
         final isSelected = deformat.lineName == selectedLine;
 
         return Card(
-          margin: const EdgeInsets.symmetric(vertical: 4),
-          surfaceTintColor: isSelected ? Colors.blueAccent : null,
+          margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 3),
+          // surfaceTintColor: isSelected ? Colors.blueAccent : null,
+          color: isSelected ? Colors.blueAccent[800] : Colors.white,
           child: ListTile(
+            // tileColor: isSelected ? Colors.blueAccent[800] : Colors.white,
             onTap: () {
               setState(() {
                 selectedLine = isSelected ? null : deformat.lineName;

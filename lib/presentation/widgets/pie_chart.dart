@@ -106,7 +106,7 @@ class _PieChartState extends State<PieChart> {
               final percentage = total > 0
                   ? (_filteredData[index] / total * 100).toStringAsFixed(1)
                   : '0.0';
-              final minutes = _filteredData[index].toStringAsFixed(1);
+              final minutes = widget.data[index].toStringAsFixed(1);
 
               return InkWell(
                 onTap: () {
@@ -219,6 +219,14 @@ class _PieChartState extends State<PieChart> {
                     color: Colors.black,
                     fontWeight: FontWeight.bold,
                     fontSize: 24,
+                  ),
+                ),
+                Text(
+                  '(${(total / 60).toStringAsFixed(1)} год)',
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontWeight: FontWeight.w500,
+                    fontSize: 16,
                   ),
                 ),
               ],
